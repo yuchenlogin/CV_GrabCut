@@ -1,0 +1,10 @@
+# requirements.txt
+
+# For GUI components
+PyQt5>=5.14
+
+# For image processing and computer vision tasks
+opencv-python>=4.0 
+
+# For numerical operations (OpenCV and custom GMM depend on it)
+numpy>=1.18
