@@ -1,6 +1,7 @@
 import sys
 import cv2
 import numpy as np
+import time
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -32,7 +33,7 @@ from segmentation import run_grabcut_logic, apply_border_matting_logic
 class ProcessingThread(QThread):
     """后台处理线程，避免界面卡顿"""
 
-    finished = pyqtSignal(object, object, str)  # mask, binary, message
+    finished = pyqtSignal(object, object, str, float)  # mask, binary, message
 
     def __init__(
         self,
@@ -55,6 +56,7 @@ class ProcessingThread(QThread):
 
     def run(self):
         try:
+            start_time = time.perf_counter()  # 使用高精度计时器
             updated_mask, output_binary, status_msg = run_grabcut_logic(
                 self.original_image,
                 self.grabcut_mask,
@@ -64,7 +66,9 @@ class ProcessingThread(QThread):
                 self.brush_size,
                 self.mode,
             )
-            self.finished.emit(updated_mask, output_binary, status_msg)
+            end_time = time.perf_counter()
+            execution_time = end_time - start_time  # 计算执行耗时（单位：秒）
+            self.finished.emit(updated_mask, output_binary, status_msg, execution_time)
         except Exception as e:
             self.finished.emit(None, None, f"处理出错: {str(e)}")
 
@@ -1226,7 +1230,6 @@ class InteractiveSegmentationApp(QMainWindow):
         if self.processing_thread and self.processing_thread.isRunning():
             self.show_status_message("处理中，请稍候... ⏳", 1000)
             return
-
         self.control_panel.progress_bar.setVisible(True)
         self.control_panel.progress_bar.setRange(0, 0)
 
@@ -1263,9 +1266,12 @@ class InteractiveSegmentationApp(QMainWindow):
 
         self.show_status_message("正在处理分割... 🎯")
 
-    def on_grabcut_finished(self, updated_mask, output_binary, status_msg):
+    def on_grabcut_finished(
+        self, updated_mask, output_binary, status_msg, execution_time
+    ):
         self.control_panel.progress_bar.setVisible(False)
-
+        if execution_time >= 0:
+            print(f"--- GrabCut 算法执行耗时: {execution_time:.4f} 秒 ---")
         if updated_mask is not None and output_binary is not None:
             self.grabcut_mask = updated_mask
 
